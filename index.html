@@ -3,35 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Control Panel</title>
+  <title>لوحة التحكم</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+  <style>
+    body {
+      background-color: #f5f0e6;
+      font-family: 'Arial', sans-serif;
+      direction: rtl;
+      text-align: center;
+    }
+    h2 {
+      margin-top: 20px;
+      color: #4b3832;
+    }
+    .container {
+      width: 90%;
+      max-width: 400px;
+      margin: 50px auto;
+      background-color: #ffffff;
+      border: 2px solid #c9b79c;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    input[type="password"] {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #8c6f4f;
+      color: white;
+      padding: 10px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #5a4633;
+    }
+    p {
+      color: red;
+      margin: 5px 0;
+      font-weight: bold;
+    }
+    #adminPanel {
+      color: green;
+    }
+  </style>
 </head>
 <body>
-  <h2>Control Panel</h2>
 
-  <div id="setPasswordForm">
-    <h3>Set Admin Password</h3>
-    <input type="password" id="passwordInput" placeholder="Enter password" required>
-    <input type="password" id="confirmPasswordInput" placeholder="Confirm password" required>
-    <button onclick="setPassword()">Set Password</button>
-    <p id="setPasswordError" style="color:red;"></p>
+  <h2>لوحة التحكم</h2>
+
+  <div class="container" id="setPasswordForm">
+    <h3>تعيين كلمة مرور المدير</h3>
+    <input type="password" id="passwordInput" placeholder="Enter password">
+    <input type="password" id="confirmPasswordInput" placeholder="Confirm password">
+    <button onclick="setPassword()">تعيين</button>
+    <p id="setPasswordError"></p>
   </div>
 
-  <div id="loginForm" style="display:none;">
-    <h3>Login</h3>
-    <input type="password" id="loginPasswordInput" placeholder="Enter password" required>
-    <button onclick="login()">Login</button>
-    <p id="loginErrorMessage" style="color:red;"></p>
+  <div class="container" id="loginForm" style="display:none;">
+    <h3>تسجيل الدخول</h3>
+    <input type="password" id="loginPasswordInput" placeholder="Enter password">
+    <button onclick="login()">دخول</button>
+    <p id="loginErrorMessage"></p>
   </div>
 
-  <div id="adminPanel" style="display:none;">
-    <h3>Welcome to the Admin Panel!</h3>
+  <div class="container" id="adminPanel" style="display:none;">
+    <h3>مرحبًا بك في لوحة التحكم!</h3>
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
       authDomain: "hamsa-6009e.firebaseapp.com",
@@ -43,70 +94,84 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+    const db = firebase.database();
+
+    function validatePassword(password) {
+      const length = password.length >= 8;
+      const upper = /[A-Z]/.test(password);
+      const lower = /[a-z]/.test(password);
+      const number = /[0-9]/.test(password);
+      const special = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+      const noRepeat = !/(.)\1{2,}/.test(password); // لا تكرار لأكثر من مرتين
+
+      if (!length) return "كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل.";
+      if (!upper) return "كلمة المرور يجب أن تحتوي على حرف إنجليزي كبير.";
+      if (!lower) return "كلمة المرور يجب أن تحتوي على حرف إنجليزي صغير.";
+      if (!number) return "كلمة المرور يجب أن تحتوي على رقم.";
+      if (!special) return "كلمة المرور يجب أن تحتوي على رمز مثل (! أو @).";
+      if (!noRepeat) return "لا تكرر نفس الحرف أكثر من مرتين متتاليتين.";
+
+      return ""; // valid
+    }
 
     function setPassword() {
-      const password = document.getElementById("passwordInput").value;
-      const confirmPassword = document.getElementById("confirmPasswordInput").value;
-      const errorElement = document.getElementById("setPasswordError");
+      const pass = document.getElementById("passwordInput").value;
+      const confirm = document.getElementById("confirmPasswordInput").value;
+      const errorEl = document.getElementById("setPasswordError");
 
-      errorElement.textContent = "";
-
-      if (!password || password !== confirmPassword) {
-        errorElement.textContent = "Passwords do not match or are empty.";
+      if (pass !== confirm) {
+        errorEl.textContent = "كلمتا المرور غير متطابقتين.";
         return;
       }
 
-      const hash = CryptoJS.SHA256(password).toString();
-      firebase.database().ref("adminPassword").set(hash)
-        .then(() => {
+      const validationError = validatePassword(pass);
+      if (validationError) {
+        errorEl.textContent = validationError;
+        return;
+      }
+
+      try {
+        const hash = bcrypt.hashSync(pass, 10);
+        db.ref("adminPassword").set(hash).then(() => {
           document.getElementById("setPasswordForm").style.display = "none";
           document.getElementById("loginForm").style.display = "block";
-        })
-        .catch((error) => {
-          console.error("Error saving password:", error);
-          errorElement.textContent = "Error saving password.";
         });
+      } catch (e) {
+        errorEl.textContent = "فشل التشفير.";
+      }
     }
 
     function login() {
-      const enteredPassword = document.getElementById("loginPasswordInput").value;
-      const errorElement = document.getElementById("loginErrorMessage");
+      const entered = document.getElementById("loginPasswordInput").value;
+      const errorEl = document.getElementById("loginErrorMessage");
 
-      errorElement.textContent = "";
-
-      firebase.database().ref("adminPassword").get()
-        .then((snapshot) => {
-          if (snapshot.exists()) {
-            const storedHash = snapshot.val();
-            const enteredHash = CryptoJS.SHA256(enteredPassword).toString();
-
-            if (enteredHash === storedHash) {
-              document.getElementById("loginForm").style.display = "none";
-              document.getElementById("adminPanel").style.display = "block";
-            } else {
-              errorElement.textContent = "Incorrect password.";
-            }
+      db.ref("adminPassword").get().then(snapshot => {
+        if (snapshot.exists()) {
+          const hash = snapshot.val();
+          if (bcrypt.compareSync(entered, hash)) {
+            document.getElementById("loginForm").style.display = "none";
+            document.getElementById("adminPanel").style.display = "block";
           } else {
-            errorElement.textContent = "No password found.";
+            errorEl.textContent = "كلمة المرور غير صحيحة.";
           }
-        })
-        .catch((error) => {
-          console.error("Login error:", error);
-        });
+        } else {
+          errorEl.textContent = "لا توجد كلمة مرور محفوظة.";
+        }
+      }).catch(err => {
+        errorEl.textContent = "حدث خطأ أثناء التحقق.";
+        console.error(err);
+      });
     }
 
     function checkPasswordSet() {
-      firebase.database().ref("adminPassword").get()
-        .then((snapshot) => {
-          if (snapshot.exists()) {
-            document.getElementById("setPasswordForm").style.display = "none";
-            document.getElementById("loginForm").style.display = "block";
-          } else {
-            document.getElementById("setPasswordForm").style.display = "block";
-            document.getElementById("loginForm").style.display = "none";
-          }
-        });
+      db.ref("adminPassword").get().then(snapshot => {
+        if (snapshot.exists()) {
+          document.getElementById("setPasswordForm").style.display = "none";
+          document.getElementById("loginForm").style.display = "block";
+        } else {
+          document.getElementById("setPasswordForm").style.display = "block";
+        }
+      });
     }
 
     window.onload = checkPasswordSet;
