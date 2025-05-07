@@ -117,6 +117,27 @@
                 document.getElementById("loginErrorMessage").textContent = "Error occurred. Please try again.";
             });
         }
+
+        // Check if password already exists in Firebase to toggle forms visibility
+        function checkPasswordSet() {
+            const passwordRef = firebase.ref(database, "adminPassword");
+            firebase.get(passwordRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    // Password exists, show login form
+                    document.getElementById("setPasswordForm").style.display = "none";
+                    document.getElementById("loginForm").style.display = "block";
+                } else {
+                    // Password does not exist, show set password form
+                    document.getElementById("setPasswordForm").style.display = "block";
+                    document.getElementById("loginForm").style.display = "none";
+                }
+            }).catch((error) => {
+                console.error("Error checking password in Firebase:", error);
+            });
+        }
+
+        // Call the checkPasswordSet function to toggle form visibility on page load
+        window.onload = checkPasswordSet;
     </script>
 </body>
 </html>
