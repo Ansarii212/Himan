@@ -6,76 +6,76 @@
   <title>لوحة التحكم</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
   <style>
     body {
       background-color: #f5f0e6;
-      font-family: 'Arial', sans-serif;
+      font-family: 'Cairo', sans-serif;
       direction: rtl;
       text-align: center;
     }
-    h2 {
-      margin-top: 20px;
-      color: #4b3832;
-    }
+
     .container {
       width: 90%;
       max-width: 400px;
       margin: 50px auto;
-      background-color: #ffffff;
-      border: 2px solid #c9b79c;
-      border-radius: 15px;
+      background-color: #fff;
       padding: 30px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      border: 2px solid #ccc;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    input[type="password"] {
-      width: 90%;
+
+    h2 {
+      color: #8B4513;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
       padding: 10px;
       margin: 10px 0;
       border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 16px;
     }
+
     button {
-      background-color: #8c6f4f;
+      background-color: #8B4513;
       color: white;
-      padding: 10px 25px;
-      font-size: 16px;
       border: none;
+      padding: 10px 20px;
+      font-size: 16px;
       border-radius: 8px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      margin-top: 10px;
     }
+
     button:hover {
-      background-color: #5a4633;
+      background-color: #a0522d;
     }
-    p {
+
+    .error {
       color: red;
-      margin: 5px 0;
-      font-weight: bold;
-    }
-    #adminPanel {
-      color: green;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-
   <h2>لوحة التحكم</h2>
 
   <div class="container" id="setPasswordForm">
-    <h3>تعيين كلمة مرور المدير</h3>
-    <input type="password" id="passwordInput" placeholder="Enter password">
-    <input type="password" id="confirmPasswordInput" placeholder="Confirm password">
-    <button onclick="setPassword()">تعيين</button>
-    <p id="setPasswordError"></p>
+    <h3>تعيين كلمة مرور المشرف</h3>
+    <input type="password" id="passwordInput" placeholder="Password" required>
+    <input type="password" id="confirmPasswordInput" placeholder="Confirm Password" required>
+    <button onclick="setPassword()">حفظ كلمة المرور</button>
+    <p class="error" id="setPasswordError"></p>
   </div>
 
   <div class="container" id="loginForm" style="display:none;">
     <h3>تسجيل الدخول</h3>
-    <input type="password" id="loginPasswordInput" placeholder="Enter password">
+    <input type="password" id="loginPasswordInput" placeholder="Password" required>
     <button onclick="login()">دخول</button>
-    <p id="loginErrorMessage"></p>
+    <p class="error" id="loginErrorMessage"></p>
   </div>
 
   <div class="container" id="adminPanel" style="display:none;">
@@ -83,6 +83,7 @@
   </div>
 
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
       authDomain: "hamsa-6009e.firebaseapp.com",
@@ -94,84 +95,90 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const database = firebase.database();
+
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+    }
 
     function validatePassword(password) {
-      const length = password.length >= 8;
-      const upper = /[A-Z]/.test(password);
-      const lower = /[a-z]/.test(password);
-      const number = /[0-9]/.test(password);
-      const special = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-      const noRepeat = !/(.)\1{2,}/.test(password); // لا تكرار لأكثر من مرتين
-
-      if (!length) return "كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل.";
-      if (!upper) return "كلمة المرور يجب أن تحتوي على حرف إنجليزي كبير.";
-      if (!lower) return "كلمة المرور يجب أن تحتوي على حرف إنجليزي صغير.";
-      if (!number) return "كلمة المرور يجب أن تحتوي على رقم.";
-      if (!special) return "كلمة المرور يجب أن تحتوي على رمز مثل (! أو @).";
-      if (!noRepeat) return "لا تكرر نفس الحرف أكثر من مرتين متتاليتين.";
-
-      return ""; // valid
+      const minLength = 8;
+      const hasUpper = /[A-Z]/.test(password);
+      const hasLower = /[a-z]/.test(password);
+      const hasNumber = /\d/.test(password);
+      const hasSymbol = /[^A-Za-z0-9]/.test(password);
+      const hasRepeats = /(.)\1{2,}/.test(password); // 3 أحرف متكررة
+      return password.length >= minLength && hasUpper && hasLower && hasNumber && hasSymbol && !hasRepeats;
     }
 
     function setPassword() {
-      const pass = document.getElementById("passwordInput").value;
-      const confirm = document.getElementById("confirmPasswordInput").value;
-      const errorEl = document.getElementById("setPasswordError");
+      const password = document.getElementById("passwordInput").value;
+      const confirmPassword = document.getElementById("confirmPasswordInput").value;
+      const errorMsg = document.getElementById("setPasswordError");
 
-      if (pass !== confirm) {
-        errorEl.textContent = "كلمتا المرور غير متطابقتين.";
+      if (!password || password !== confirmPassword) {
+        errorMsg.textContent = "كلمتا المرور غير متطابقتين.";
         return;
       }
 
-      const validationError = validatePassword(pass);
-      if (validationError) {
-        errorEl.textContent = validationError;
+      if (!validatePassword(password)) {
+        errorMsg.textContent = "يجب أن تحتوي كلمة المرور على حرف كبير وصغير، رقم، رمز، وألا تتكرر الأحرف، ويجب أن تكون 8 أحرف على الأقل.";
         return;
       }
 
-      try {
-        const hash = bcrypt.hashSync(pass, 10);
-        db.ref("adminPassword").set(hash).then(() => {
-          document.getElementById("setPasswordForm").style.display = "none";
-          document.getElementById("loginForm").style.display = "block";
-        });
-      } catch (e) {
-        errorEl.textContent = "فشل التشفير.";
-      }
+      hashPassword(password).then((hash) => {
+        database.ref("adminPassword").set(hash)
+          .then(() => {
+            document.getElementById("setPasswordForm").style.display = "none";
+            document.getElementById("loginForm").style.display = "block";
+          })
+          .catch(() => {
+            errorMsg.textContent = "حدث خطأ أثناء الحفظ.";
+          });
+      }).catch(() => {
+        errorMsg.textContent = "فشل التشفير.";
+      });
     }
 
     function login() {
-      const entered = document.getElementById("loginPasswordInput").value;
-      const errorEl = document.getElementById("loginErrorMessage");
+      const enteredPassword = document.getElementById("loginPasswordInput").value;
+      const errorMsg = document.getElementById("loginErrorMessage");
 
-      db.ref("adminPassword").get().then(snapshot => {
+      database.ref("adminPassword").get().then((snapshot) => {
         if (snapshot.exists()) {
-          const hash = snapshot.val();
-          if (bcrypt.compareSync(entered, hash)) {
-            document.getElementById("loginForm").style.display = "none";
-            document.getElementById("adminPanel").style.display = "block";
-          } else {
-            errorEl.textContent = "كلمة المرور غير صحيحة.";
-          }
+          const storedHash = snapshot.val();
+          hashPassword(enteredPassword).then((enteredHash) => {
+            if (enteredHash === storedHash) {
+              document.getElementById("loginForm").style.display = "none";
+              document.getElementById("adminPanel").style.display = "block";
+            } else {
+              errorMsg.textContent = "كلمة المرور غير صحيحة.";
+            }
+          }).catch(() => {
+            errorMsg.textContent = "حدث خطأ أثناء التحقق.";
+          });
         } else {
-          errorEl.textContent = "لا توجد كلمة مرور محفوظة.";
+          errorMsg.textContent = "لم يتم تعيين كلمة مرور بعد.";
         }
-      }).catch(err => {
-        errorEl.textContent = "حدث خطأ أثناء التحقق.";
-        console.error(err);
+      }).catch(() => {
+        errorMsg.textContent = "حدث خطأ أثناء الوصول إلى البيانات.";
       });
     }
 
     function checkPasswordSet() {
-      db.ref("adminPassword").get().then(snapshot => {
-        if (snapshot.exists()) {
-          document.getElementById("setPasswordForm").style.display = "none";
-          document.getElementById("loginForm").style.display = "block";
-        } else {
-          document.getElementById("setPasswordForm").style.display = "block";
-        }
-      });
+      database.ref("adminPassword").get()
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            document.getElementById("setPasswordForm").style.display = "none";
+            document.getElementById("loginForm").style.display = "block";
+          } else {
+            document.getElementById("setPasswordForm").style.display = "block";
+            document.getElementById("loginForm").style.display = "none";
+          }
+        });
     }
 
     window.onload = checkPasswordSet;
