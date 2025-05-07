@@ -1,143 +1,95 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Panel</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Panel</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
+    import bcrypt from "https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
+      authDomain: "hamsa-6009e.firebaseapp.com",
+      databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com",
+      projectId: "hamsa-6009e",
+      storageBucket: "hamsa-6009e.firebasestorage.app",
+      messagingSenderId: "998163671039",
+      appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca",
+      measurementId: "G-PD1QB8X0FE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getDatabase(app);
+
+    window.setPassword = async function () {
+      const password = document.getElementById("passwordInput").value;
+      const confirmPassword = document.getElementById("confirmPasswordInput").value;
+
+      if (!password || password !== confirmPassword) {
+        document.getElementById("setPasswordError").textContent = "Passwords do not match or empty.";
+        return;
+      }
+
+      const hash = bcrypt.hashSync(password, 10);
+      await set(ref(db, "adminPassword"), hash);
+      document.getElementById("setPasswordForm").style.display = "none";
+      document.getElementById("loginForm").style.display = "block";
+    }
+
+    window.login = async function () {
+      const enteredPassword = document.getElementById("loginPasswordInput").value;
+      const snapshot = await get(ref(db, "adminPassword"));
+      if (snapshot.exists()) {
+        const storedHash = snapshot.val();
+        const isMatch = bcrypt.compareSync(enteredPassword, storedHash);
+        if (isMatch) {
+          document.getElementById("loginForm").style.display = "none";
+          document.getElementById("adminPanel").style.display = "block";
+        } else {
+          document.getElementById("loginErrorMessage").textContent = "Incorrect password.";
+        }
+      } else {
+        document.getElementById("loginErrorMessage").textContent = "Password not set.";
+      }
+    }
+
+    async function checkPasswordSet() {
+      const snapshot = await get(ref(db, "adminPassword"));
+      if (snapshot.exists()) {
+        document.getElementById("setPasswordForm").style.display = "none";
+        document.getElementById("loginForm").style.display = "block";
+      } else {
+        document.getElementById("setPasswordForm").style.display = "block";
+        document.getElementById("loginForm").style.display = "none";
+      }
+    }
+
+    window.onload = checkPasswordSet;
+  </script>
 </head>
 <body>
-    <h2>Control Panel</h2>
-    <div id="setPasswordForm">
-        <h3>Set Admin Password</h3>
-        <input type="password" id="passwordInput" placeholder="Enter password" required>
-        <input type="password" id="confirmPasswordInput" placeholder="Confirm password" required>
-        <button onclick="setPassword()">Set Password</button>
-        <p id="setPasswordError" style="color:red;"></p>
-    </div>
+  <h2>Control Panel</h2>
+  <div id="setPasswordForm">
+    <h3>Set Admin Password</h3>
+    <input type="password" id="passwordInput" placeholder="Enter password" required>
+    <input type="password" id="confirmPasswordInput" placeholder="Confirm password" required>
+    <button onclick="setPassword()">Set Password</button>
+    <p id="setPasswordError" style="color:red;"></p>
+  </div>
 
-    <div id="loginForm" style="display:none;">
-        <h3>Login</h3>
-        <input type="password" id="loginPasswordInput" placeholder="Enter password" required>
-        <button onclick="login()">Login</button>
-        <p id="loginErrorMessage" style="color:red;"></p>
-    </div>
+  <div id="loginForm" style="display:none;">
+    <h3>Login</h3>
+    <input type="password" id="loginPasswordInput" placeholder="Enter password" required>
+    <button onclick="login()">Login</button>
+    <p id="loginErrorMessage" style="color:red;"></p>
+  </div>
 
-    <div id="adminPanel" style="display:none;">
-        <h3>Welcome to the Admin Panel!</h3>
-        <!-- Your control panel content here -->
-    </div>
-
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
-            authDomain: "hamsa-6009e.firebaseapp.com",
-            databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com",
-            projectId: "hamsa-6009e",
-            storageBucket: "hamsa-6009e.firebasestorage.app",
-            messagingSenderId: "998163671039",
-            appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca",
-            measurementId: "G-PD1QB8X0FE"
-        };
-
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.getDatabase(app);
-
-        // Function to set password
-        function setPassword() {
-            const password = document.getElementById("passwordInput").value;
-            const confirmPassword = document.getElementById("confirmPasswordInput").value;
-
-            if (password !== confirmPassword) {
-                document.getElementById("setPasswordError").textContent = "Passwords do not match.";
-                return;
-            }
-
-            if (password === "") {
-                document.getElementById("setPasswordError").textContent = "Please enter a password.";
-                return;
-            }
-
-            const saltRounds = 10;
-
-            // Hash the password
-            bcrypt.hash(password, saltRounds, function(err, hash) {
-                if (!err) {
-                    const dbRef = firebase.ref(database, 'adminPassword');
-                    firebase.set(dbRef, hash)
-                        .then(() => {
-                            console.log('Password set successfully');
-                            document.getElementById("setPasswordForm").style.display = "none";
-                            document.getElementById("loginForm").style.display = "block";
-                        })
-                        .catch((error) => {
-                            console.error('Error storing password:', error);
-                        });
-                }
-            });
-        }
-
-        // Function to login with password
-        function login() {
-            const enteredPassword = document.getElementById("loginPasswordInput").value;
-
-            if (enteredPassword === "") {
-                document.getElementById("loginErrorMessage").textContent = "Please enter a password.";
-                return;
-            }
-
-            const passwordRef = firebase.ref(database, "adminPassword");
-
-            // Retrieve the hashed password from Firebase
-            firebase.get(passwordRef).then((snapshot) => {
-                if (snapshot.exists()) {
-                    const storedHashedPassword = snapshot.val();
-
-                    // Compare the entered password with the stored hashed password
-                    bcrypt.compare(enteredPassword, storedHashedPassword, function(err, result) {
-                        if (result) {
-                            // Password matched, show admin panel
-                            document.getElementById("loginForm").style.display = "none";
-                            document.getElementById("adminPanel").style.display = "block";
-                        } else {
-                            // Incorrect password
-                            document.getElementById("loginErrorMessage").textContent = "Incorrect password.";
-                        }
-                    });
-                } else {
-                    // No password stored in Firebase
-                    document.getElementById("loginErrorMessage").textContent = "No password set in database.";
-                }
-            }).catch((error) => {
-                console.error("Error retrieving password from Firebase:", error);
-                document.getElementById("loginErrorMessage").textContent = "Error occurred. Please try again.";
-            });
-        }
-
-        // Check if password already exists in Firebase to toggle forms visibility
-        function checkPasswordSet() {
-            const passwordRef = firebase.ref(database, "adminPassword");
-            firebase.get(passwordRef).then((snapshot) => {
-                if (snapshot.exists()) {
-                    // Password exists, show login form
-                    document.getElementById("setPasswordForm").style.display = "none";
-                    document.getElementById("loginForm").style.display = "block";
-                } else {
-                    // Password does not exist, show set password form
-                    document.getElementById("setPasswordForm").style.display = "block";
-                    document.getElementById("loginForm").style.display = "none";
-                }
-            }).catch((error) => {
-                console.error("Error checking password in Firebase:", error);
-            });
-        }
-
-        // Call the checkPasswordSet function to toggle form visibility on page load
-        window.onload = checkPasswordSet;
-    </script>
+  <div id="adminPanel" style="display:none;">
+    <h3>Welcome to the Admin Panel!</h3>
+  </div>
 </body>
 </html>
