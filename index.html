@@ -49,20 +49,24 @@
       const confirmPassword = document.getElementById("confirmPasswordInput").value;
       const errorElement = document.getElementById("setPasswordError");
 
-      console.log("Set Password clicked");
+      errorElement.textContent = "";
 
       if (!password || !confirmPassword || password !== confirmPassword) {
         errorElement.textContent = "Passwords do not match or are empty.";
         return;
       }
 
-      try {
-        const hash = bcrypt.hashSync(password, 10);
-        console.log("Hashed password:", hash);
+      // استخدم bcrypt بأسلوب غير متزامن
+      bcrypt.hash(password, 10, function(err, hash) {
+        if (err) {
+          console.error("Hashing error:", err);
+          errorElement.textContent = "Hashing failed.";
+          return;
+        }
 
+        // حفظ التشفير في Realtime Database
         database.ref("adminPassword").set(hash)
           .then(() => {
-            console.log("Password saved to Firebase");
             document.getElementById("setPasswordForm").style.display = "none";
             document.getElementById("loginForm").style.display = "block";
           })
@@ -70,26 +74,34 @@
             console.error("Error saving password:", error);
             errorElement.textContent = "Error saving password.";
           });
-      } catch (err) {
-        console.error("Hashing error:", err);
-        errorElement.textContent = "Hashing failed.";
-      }
+      });
     }
 
     function login() {
       const enteredPassword = document.getElementById("loginPasswordInput").value;
       const errorElement = document.getElementById("loginErrorMessage");
 
+      errorElement.textContent = "";
+
       database.ref("adminPassword").get()
         .then((snapshot) => {
           if (snapshot.exists()) {
-            const hash = snapshot.val();
-            if (bcrypt.compareSync(enteredPassword, hash)) {
-              document.getElementById("loginForm").style.display = "none";
-              document.getElementById("adminPanel").style.display = "block";
-            } else {
-              errorElement.textContent = "Incorrect password.";
-            }
+            const storedHash = snapshot.val();
+
+            bcrypt.compare(enteredPassword, storedHash, function(err, result) {
+              if (err) {
+                console.error("Compare error:", err);
+                errorElement.textContent = "Comparison failed.";
+                return;
+              }
+
+              if (result) {
+                document.getElementById("loginForm").style.display = "none";
+                document.getElementById("adminPanel").style.display = "block";
+              } else {
+                errorElement.textContent = "Incorrect password.";
+              }
+            });
           } else {
             errorElement.textContent = "No password found.";
           }
