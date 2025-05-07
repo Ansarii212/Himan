@@ -1,126 +1,122 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة التحكم</title>
-  <script type="module">
-    // استيراد الوظائف من SDKs التي تحتاجها
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-    import bcrypt from "https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js";
-
-    // إعدادات Firebase الخاصة بك
-    const firebaseConfig = {
-      apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
-      authDomain: "hamsa-6009e.firebaseapp.com",
-      databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com",
-      projectId: "hamsa-6009e",
-      storageBucket: "hamsa-6009e.firebasestorage.app",
-      messagingSenderId: "998163671039",
-      appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca",
-      measurementId: "G-PD1QB8X0FE"
-    };
-
-    // تهيئة Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getDatabase(app);
-
-    // دالة للتحقق من كلمة المرور
-    function checkPassword(password) {
-      const passwordRef = ref(db, "adminPassword");
-      get(passwordRef).then((snapshot) => {
-        const storedPassword = snapshot.val(); // جلب كلمة المرور المشفرة من Firebase
-
-        if (storedPassword && bcrypt.compareSync(password, storedPassword)) {
-          // كلمة المرور صحيحة، اعرض لوحة التحكم
-          document.getElementById("adminPanel").style.display = "block";
-          document.querySelector(".login-container").style.display = "none";
-        } else {
-          // كلمة المرور خاطئة
-          alert("كلمة المرور غير صحيحة");
-        }
-      });
-    }
-
-    // دالة تسجيل الدخول
-    function login() {
-      const password = document.getElementById("password").value.trim();
-      if (password) {
-        checkPassword(password); // تحقق من كلمة المرور
-      }
-    }
-  </script>
-  <style>
-    /* تنسيق لوحة التحكم */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f4f4f4;
-    }
-
-    .login-container {
-      max-width: 400px;
-      margin: 50px auto;
-      padding: 20px;
-      background-color: #fff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-    }
-
-    .login-container input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-
-    .login-container button {
-      width: 100%;
-      padding: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .login-container button:hover {
-      background-color: #45a049;
-    }
-
-    #adminPanel {
-      display: none;
-      padding: 20px;
-      background-color: #fff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-    }
-
-    #adminPanel h1 {
-      text-align: center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 </head>
 <body>
+    <h2>Control Panel</h2>
+    <div id="setPasswordForm">
+        <h3>Set Admin Password</h3>
+        <input type="password" id="passwordInput" placeholder="Enter password" required>
+        <input type="password" id="confirmPasswordInput" placeholder="Confirm password" required>
+        <button onclick="setPassword()">Set Password</button>
+        <p id="setPasswordError" style="color:red;"></p>
+    </div>
 
-<!-- صفحة تسجيل الدخول -->
-<div class="login-container">
-  <h2>تسجيل الدخول إلى لوحة التحكم</h2>
-  <input type="password" id="password" placeholder="أدخل كلمة المرور" />
-  <button onclick="login()">تسجيل الدخول</button>
-</div>
+    <div id="loginForm" style="display:none;">
+        <h3>Login</h3>
+        <input type="password" id="loginPasswordInput" placeholder="Enter password" required>
+        <button onclick="login()">Login</button>
+        <p id="loginErrorMessage" style="color:red;"></p>
+    </div>
 
-<!-- لوحة التحكم -->
-<div id="adminPanel">
-  <h1>مرحبا بك في لوحة التحكم</h1>
-  <p>محتوى خاص باللوحة هنا...</p>
-</div>
+    <div id="adminPanel" style="display:none;">
+        <h3>Welcome to the Admin Panel!</h3>
+        <!-- Your control panel content here -->
+    </div>
 
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
+            authDomain: "hamsa-6009e.firebaseapp.com",
+            databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com",
+            projectId: "hamsa-6009e",
+            storageBucket: "hamsa-6009e.firebasestorage.app",
+            messagingSenderId: "998163671039",
+            appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca",
+            measurementId: "G-PD1QB8X0FE"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.getDatabase(app);
+
+        // Function to set password
+        function setPassword() {
+            const password = document.getElementById("passwordInput").value;
+            const confirmPassword = document.getElementById("confirmPasswordInput").value;
+
+            if (password !== confirmPassword) {
+                document.getElementById("setPasswordError").textContent = "Passwords do not match.";
+                return;
+            }
+
+            if (password === "") {
+                document.getElementById("setPasswordError").textContent = "Please enter a password.";
+                return;
+            }
+
+            const saltRounds = 10;
+
+            // Hash the password
+            bcrypt.hash(password, saltRounds, function(err, hash) {
+                if (!err) {
+                    const dbRef = firebase.ref(database, 'adminPassword');
+                    firebase.set(dbRef, hash)
+                        .then(() => {
+                            console.log('Password set successfully');
+                            document.getElementById("setPasswordForm").style.display = "none";
+                            document.getElementById("loginForm").style.display = "block";
+                        })
+                        .catch((error) => {
+                            console.error('Error storing password:', error);
+                        });
+                }
+            });
+        }
+
+        // Function to login with password
+        function login() {
+            const enteredPassword = document.getElementById("loginPasswordInput").value;
+
+            if (enteredPassword === "") {
+                document.getElementById("loginErrorMessage").textContent = "Please enter a password.";
+                return;
+            }
+
+            const passwordRef = firebase.ref(database, "adminPassword");
+
+            // Retrieve the hashed password from Firebase
+            firebase.get(passwordRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const storedHashedPassword = snapshot.val();
+
+                    // Compare the entered password with the stored hashed password
+                    bcrypt.compare(enteredPassword, storedHashedPassword, function(err, result) {
+                        if (result) {
+                            // Password matched, show admin panel
+                            document.getElementById("loginForm").style.display = "none";
+                            document.getElementById("adminPanel").style.display = "block";
+                        } else {
+                            // Incorrect password
+                            document.getElementById("loginErrorMessage").textContent = "Incorrect password.";
+                        }
+                    });
+                } else {
+                    // No password stored in Firebase
+                    document.getElementById("loginErrorMessage").textContent = "No password set in database.";
+                }
+            }).catch((error) => {
+                console.error("Error retrieving password from Firebase:", error);
+                document.getElementById("loginErrorMessage").textContent = "Error occurred. Please try again.";
+            });
+        }
+    </script>
 </body>
 </html>
