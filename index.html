@@ -6,7 +6,7 @@
   <title>Control Panel</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
   <h2>Control Panel</h2>
@@ -31,6 +31,7 @@
   </div>
 
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
       authDomain: "hamsa-6009e.firebaseapp.com",
@@ -51,30 +52,21 @@
 
       errorElement.textContent = "";
 
-      if (!password || !confirmPassword || password !== confirmPassword) {
+      if (!password || password !== confirmPassword) {
         errorElement.textContent = "Passwords do not match or are empty.";
         return;
       }
 
-      // استخدم bcrypt بأسلوب غير متزامن
-      bcrypt.hash(password, 10, function(err, hash) {
-        if (err) {
-          console.error("Hashing error:", err);
-          errorElement.textContent = "Hashing failed.";
-          return;
-        }
-
-        // حفظ التشفير في Realtime Database
-        database.ref("adminPassword").set(hash)
-          .then(() => {
-            document.getElementById("setPasswordForm").style.display = "none";
-            document.getElementById("loginForm").style.display = "block";
-          })
-          .catch((error) => {
-            console.error("Error saving password:", error);
-            errorElement.textContent = "Error saving password.";
-          });
-      });
+      const hash = CryptoJS.SHA256(password).toString();
+      firebase.database().ref("adminPassword").set(hash)
+        .then(() => {
+          document.getElementById("setPasswordForm").style.display = "none";
+          document.getElementById("loginForm").style.display = "block";
+        })
+        .catch((error) => {
+          console.error("Error saving password:", error);
+          errorElement.textContent = "Error saving password.";
+        });
     }
 
     function login() {
@@ -83,25 +75,18 @@
 
       errorElement.textContent = "";
 
-      database.ref("adminPassword").get()
+      firebase.database().ref("adminPassword").get()
         .then((snapshot) => {
           if (snapshot.exists()) {
             const storedHash = snapshot.val();
+            const enteredHash = CryptoJS.SHA256(enteredPassword).toString();
 
-            bcrypt.compare(enteredPassword, storedHash, function(err, result) {
-              if (err) {
-                console.error("Compare error:", err);
-                errorElement.textContent = "Comparison failed.";
-                return;
-              }
-
-              if (result) {
-                document.getElementById("loginForm").style.display = "none";
-                document.getElementById("adminPanel").style.display = "block";
-              } else {
-                errorElement.textContent = "Incorrect password.";
-              }
-            });
+            if (enteredHash === storedHash) {
+              document.getElementById("loginForm").style.display = "none";
+              document.getElementById("adminPanel").style.display = "block";
+            } else {
+              errorElement.textContent = "Incorrect password.";
+            }
           } else {
             errorElement.textContent = "No password found.";
           }
@@ -112,7 +97,7 @@
     }
 
     function checkPasswordSet() {
-      database.ref("adminPassword").get()
+      firebase.database().ref("adminPassword").get()
         .then((snapshot) => {
           if (snapshot.exists()) {
             document.getElementById("setPasswordForm").style.display = "none";
@@ -121,9 +106,6 @@
             document.getElementById("setPasswordForm").style.display = "block";
             document.getElementById("loginForm").style.display = "none";
           }
-        })
-        .catch((error) => {
-          console.error("Error checking password:", error);
         });
     }
 
