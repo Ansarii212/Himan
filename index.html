@@ -1,126 +1,187 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>عرض العقارات</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>لوحة التحكم</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      margin: 0;
-      padding: 1rem;
+      background-color: #f5f0e6;
+      font-family: 'Cairo', sans-serif;
+      direction: rtl;
+      text-align: center;
     }
 
-    .property {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    .container {
+      width: 90%;
+      max-width: 400px;
+      margin: 50px auto;
+      background-color: #fff;
+      padding: 30px;
+      border: 2px solid #ccc;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
-    .property img {
-      max-width: 100%;
+    h2 {
+      color: #8B4513;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
       border-radius: 8px;
-      margin-bottom: 0.5rem;
+      font-size: 16px;
     }
 
-    .share-btn {
-      background-color: teal;
+    button {
+      background-color: #8B4513;
       color: white;
       border: none;
-      padding: 0.4rem 0.8rem;
-      border-radius: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
+      margin-top: 10px;
     }
 
-    .share-btn:hover {
-      opacity: 0.9;
+    button:hover {
+      background-color: #a0522d;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h2>إعلانات العقارات</h2>
-  <div id="propertiesList"></div>
+  <h2>لوحة التحكم</h2>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <div class="container" id="setPasswordForm">
+    <h3>تعيين كلمة مرور المشرف</h3>
+    <input type="password" id="passwordInput" placeholder="Password" required>
+    <input type="password" id="confirmPasswordInput" placeholder="Confirm Password" required>
+    <button onclick="setPassword()">حفظ كلمة المرور</button>
+    <p class="error" id="setPasswordError"></p>
+  </div>
+
+  <div class="container" id="loginForm" style="display:none;">
+    <h3>تسجيل الدخول</h3>
+    <input type="password" id="loginPasswordInput" placeholder="Password" required>
+    <button onclick="login()">دخول</button>
+    <p class="error" id="loginErrorMessage"></p>
+  </div>
+
+  <div class="container" id="adminPanel" style="display:none;">
+    <h3>مرحبًا بك في لوحة التحكم!</h3>
+  </div>
+
   <script>
-    // إعداد Firebase
+    // Firebase config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      databaseURL: "YOUR_DATABASE_URL",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
+      authDomain: "hamsa-6009e.firebaseapp.com",
+      databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com",
+      projectId: "hamsa-6009e",
+      storageBucket: "hamsa-6009e.appspot.com",
+      messagingSenderId: "998163671039",
+      appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca"
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const database = firebase.database();
 
-    function share(code, desc) {
-      const text = `شاهد هذا الإعلان - كود: ${code}\n${desc}`;
-      if (navigator.share) {
-        navigator.share({
-          title: "إعلان عقار",
-          text: text
-        }).catch(err => alert("حدث خطأ أثناء المشاركة: " + err));
-      } else {
-        alert("المشاركة غير مدعومة في هذا المتصفح.");
-      }
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
     }
 
-    function deleteProperty(code) {
-      if (!confirm("هل أنت متأكد أنك تريد حذف هذا الإعلان نهائيًا؟")) return;
+    function validatePassword(password) {
+      const minLength = 8;
+      const hasUpper = /[A-Z]/.test(password);
+      const hasLower = /[a-z]/.test(password);
+      const hasNumber = /\d/.test(password);
+      const hasSymbol = /[^A-Za-z0-9]/.test(password);
+      const hasRepeats = /(.)\1{2,}/.test(password); // 3 أحرف متكررة
+      return password.length >= minLength && hasUpper && hasLower && hasNumber && hasSymbol && !hasRepeats;
+    }
 
-      db.ref("properties").once("value", snapshot => {
-        snapshot.forEach(child => {
-          if (child.val().code === code) {
-            db.ref("properties/" + child.key).remove()
-              .then(() => {
-                alert("تم حذف الإعلان بنجاح.");
-                displayProperties();
-              })
-              .catch(err => {
-                alert("حدث خطأ أثناء الحذف: " + err.message);
-              });
+    function setPassword() {
+      const password = document.getElementById("passwordInput").value;
+      const confirmPassword = document.getElementById("confirmPasswordInput").value;
+      const errorMsg = document.getElementById("setPasswordError");
+
+      if (!password || password !== confirmPassword) {
+        errorMsg.textContent = "كلمتا المرور غير متطابقتين.";
+        return;
+      }
+
+      if (!validatePassword(password)) {
+        errorMsg.textContent = "يجب أن تحتوي كلمة المرور على حرف كبير وصغير، رقم، رمز، وألا تتكرر الأحرف، ويجب أن تكون 8 أحرف على الأقل.";
+        return;
+      }
+
+      hashPassword(password).then((hash) => {
+        database.ref("adminPassword").set(hash)
+          .then(() => {
+            document.getElementById("setPasswordForm").style.display = "none";
+            document.getElementById("loginForm").style.display = "block";
+          })
+          .catch(() => {
+            errorMsg.textContent = "حدث خطأ أثناء الحفظ.";
+          });
+      }).catch(() => {
+        errorMsg.textContent = "فشل التشفير.";
+      });
+    }
+
+    function login() {
+      const enteredPassword = document.getElementById("loginPasswordInput").value;
+      const errorMsg = document.getElementById("loginErrorMessage");
+
+      database.ref("adminPassword").get().then((snapshot) => {
+        if (snapshot.exists()) {
+          const storedHash = snapshot.val();
+          hashPassword(enteredPassword).then((enteredHash) => {
+            if (enteredHash === storedHash) {
+              document.getElementById("loginForm").style.display = "none";
+              document.getElementById("adminPanel").style.display = "block";
+            } else {
+              errorMsg.textContent = "كلمة المرور غير صحيحة.";
+            }
+          }).catch(() => {
+            errorMsg.textContent = "حدث خطأ أثناء التحقق.";
+          });
+        } else {
+          errorMsg.textContent = "لم يتم تعيين كلمة مرور بعد.";
+        }
+      }).catch(() => {
+        errorMsg.textContent = "حدث خطأ أثناء الوصول إلى البيانات.";
+      });
+    }
+
+    function checkPasswordSet() {
+      database.ref("adminPassword").get()
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            document.getElementById("setPasswordForm").style.display = "none";
+            document.getElementById("loginForm").style.display = "block";
+          } else {
+            document.getElementById("setPasswordForm").style.display = "block";
+            document.getElementById("loginForm").style.display = "none";
           }
         });
-      });
     }
 
-    function displayProperties() {
-      const list = document.getElementById("propertiesList");
-      list.innerHTML = "";
-
-      db.ref("properties").once("value", snapshot => {
-        snapshot.forEach(child => {
-          const prop = child.val();
-          const div = document.createElement("div");
-          div.className = "property";
-          div.innerHTML = `
-            <img src="${prop.image}" alt="صورة العقار">
-            <h4>${prop.type}</h4>
-            <p><strong>الحي:</strong> ${prop.district}</p>
-            <p><strong>السعر:</strong> ${prop.price}</p>
-            <p><strong>الوصف:</strong> ${prop.desc}</p>
-            <p><strong>الكود:</strong> ${prop.code}</p>
-            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-              <button class="share-btn" onclick="share('${prop.code}', '${prop.desc}')">مشاركة</button>
-              <button class="share-btn" style="background-color: darkred;" onclick="deleteProperty('${prop.code}')">حذف</button>
-            </div>
-          `;
-          list.appendChild(div);
-        });
-      });
-    }
-
-    displayProperties();
+    window.onload = checkPasswordSet;
   </script>
 </body>
 </html>
