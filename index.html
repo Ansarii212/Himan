@@ -240,3 +240,210 @@
 
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>عقارات جدة</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #f9f4ef;
+      margin: 0;
+      padding: 0;
+      direction: rtl;
+    }
+    header {
+      background: #7b4f2c;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 1rem;
+    }
+    select {
+      width: 100%;
+      padding: 0.7rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff9f3;
+      color: #333;
+    }
+    .property {
+      background: white;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 5px solid #7b4f2c;
+      border-radius: 8px;
+    }
+    .property img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      background: #f2e9e4;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    .share-btn {
+      background: #7b4f2c;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      margin-top: 0.5rem;
+      cursor: pointer;
+    }
+    .delete-btn {
+      background: crimson;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      margin-top: 0.5rem;
+      cursor: pointer;
+    }
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .filter-bar select {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>عقارات جدة</h1>
+</header>
+
+<div class="container">
+  <div id="filters" class="filter-bar">
+    <select onchange="filterProperties()" id="sortFilter">
+      <option value="new">الأحدث</option>
+      <option value="old">الأقدم</option>
+      <option value="high">الأغلى</option>
+      <option value="low">الأرخص</option>
+    </select>
+    <select onchange="filterProperties()" id="districtFilter">
+      <option value="">كل الأحياء</option>
+      <option>الصفا</option>
+      <option>السلامة</option>
+      <option>الفيصلية</option>
+      <option>الروضة</option>
+      <option>النزهة</option>
+      <option>الحمراء</option>
+      <option>المروة</option>
+      <option>البوادي</option>
+      <option>بني مالك</option>
+      <option>العزيزية</option>
+      <option>الرحاب</option>
+      <option>الشاطئ</option>
+      <option>النهضة</option>
+      <option>الجامعة</option>
+    </select>
+  </div>
+
+  <div id="listings"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
+    authDomain: "hamsa-6009e.firebaseapp.com",
+    databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com/",
+    projectId: "hamsa-6009e",
+    storageBucket: "hamsa-6009e.appspot.com",
+    messagingSenderId: "998163671039",
+    appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let properties = [];
+
+  function displayProperties() {
+    db.ref("properties").once("value", snapshot => {
+      properties = [];
+      snapshot.forEach(child => {
+        const prop = child.val();
+        prop.key = child.key;
+        properties.push(prop);
+      });
+      renderProperties();
+    });
+  }
+
+  function renderProperties() {
+    const sort = document.getElementById("sortFilter").value;
+    const district = document.getElementById("districtFilter").value;
+    let filtered = [...properties];
+
+    if (district) {
+      filtered = filtered.filter(p => p.district === district);
+    }
+
+    if (sort === "new") filtered.sort((a, b) => b.timestamp - a.timestamp);
+    if (sort === "old") filtered.sort((a, b) => a.timestamp - b.timestamp);
+    if (sort === "high") filtered.sort((a, b) => b.price - a.price);
+    if (sort === "low") filtered.sort((a, b) => a.price - b.price);
+
+    const listings = document.getElementById("listings");
+    listings.innerHTML = "";
+    filtered.forEach(prop => {
+      const div = document.createElement("div");
+      div.className = "property";
+      div.innerHTML = `
+        <img src="${prop.image}" alt="صورة العقار">
+        <h4>${prop.type}</h4>
+        <p><strong>الحي:</strong> ${prop.district}</p>
+        <p><strong>السعر:</strong> ${prop.price}</p>
+        <p><strong>الوصف:</strong> ${prop.desc}</p>
+        <p><strong>الكود:</strong> ${prop.code}</p>
+        <div style="display:flex; justify-content: space-between;">
+          <button class="share-btn" onclick="share('${prop.code}', '${prop.desc}')">مشاركة</button>
+          <button class="delete-btn" onclick="deleteProperty('${prop.key}')">حذف</button>
+        </div>
+      `;
+      listings.appendChild(div);
+    });
+  }
+
+  function share(code, desc) {
+    const text = `إعلان رقم ${code}: ${desc}\nرابط الصفحة: ${window.location.href}`;
+    navigator.share ? navigator.share({ text }) : alert("انسخ الرابط: " + text);
+  }
+
+  function deleteProperty(key) {
+    if (confirm("هل أنت متأكد من حذف هذا الإعلان؟")) {
+      db.ref("properties/" + key).remove(() => {
+        alert("تم حذف الإعلان");
+        displayProperties();
+      });
+    }
+  }
+
+  function filterProperties() {
+    renderProperties();
+  }
+
+  window.onload = () => {
+    displayProperties();
+  }
+</script>
+
+</body>
+</html>
