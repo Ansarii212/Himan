@@ -3,51 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>لوحة التحكم</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <title>لوحة تحكم العقارات</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
       background-color: #f5f0e6;
       font-family: 'Cairo', sans-serif;
       direction: rtl;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #7b4f2c;
+      color: white;
       text-align: center;
+      padding: 1rem;
     }
 
     .container {
       width: 90%;
-      max-width: 400px;
-      margin: 50px auto;
+      max-width: 600px;
+      margin: 30px auto;
       background-color: #fff;
       padding: 30px;
-      border: 2px solid #ccc;
       border-radius: 15px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
-    h2 {
-      color: #8B4513;
-      margin-bottom: 20px;
+    h2, h3 {
+      color: #7b4f2c;
     }
 
-    input {
+    input, select, textarea, button {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
-      border: 1px solid #ccc;
       border-radius: 8px;
+      border: 1px solid #ccc;
       font-size: 16px;
     }
 
+    select {
+      background-color: #7b4f2c;
+      color: white;
+    }
+
     button {
-      background-color: #8B4513;
+      background-color: #7b4f2c;
       color: white;
       border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 8px;
       cursor: pointer;
-      margin-top: 10px;
     }
 
     button:hover {
@@ -57,29 +64,51 @@
     .error {
       color: red;
       margin-top: 10px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h2>لوحة التحكم</h2>
+
+  <header>
+    <h1>لوحة تحكم العقارات</h1>
+  </header>
 
   <div class="container" id="setPasswordForm">
     <h3>تعيين كلمة مرور المشرف</h3>
-    <input type="password" id="passwordInput" placeholder="Password" required>
-    <input type="password" id="confirmPasswordInput" placeholder="Confirm Password" required>
+    <input type="password" id="passwordInput" placeholder="كلمة المرور" required>
+    <input type="password" id="confirmPasswordInput" placeholder="تأكيد كلمة المرور" required>
     <button onclick="setPassword()">حفظ كلمة المرور</button>
     <p class="error" id="setPasswordError"></p>
   </div>
 
   <div class="container" id="loginForm" style="display:none;">
     <h3>تسجيل الدخول</h3>
-    <input type="password" id="loginPasswordInput" placeholder="Password" required>
+    <input type="password" id="loginPasswordInput" placeholder="كلمة المرور" required>
     <button onclick="login()">دخول</button>
     <p class="error" id="loginErrorMessage"></p>
   </div>
 
   <div class="container" id="adminPanel" style="display:none;">
-    <h3>مرحبًا بك في لوحة التحكم!</h3>
+    <h3>إضافة عقار جديد</h3>
+    <select id="type">
+      <option>شقة</option>
+      <option>فيلا</option>
+      <option>أرض</option>
+    </select>
+    <select id="district">
+      <option>الصفا</option><option>السلامة</option><option>الفيصلية</option>
+      <option>الروضة</option><option>النزهة</option><option>الحمراء</option>
+      <option>المروة</option><option>البوادي</option><option>بني مالك</option>
+      <option>العزيزية</option><option>الرحاب</option><option>الشاطئ</option>
+      <option>النهضة</option><option>الجامعة</option>
+    </select>
+    <input type="text" id="price" placeholder="السعر">
+    <input type="text" id="code" placeholder="كود الإعلان">
+    <textarea id="desc" placeholder="الوصف"></textarea>
+    <input type="text" id="image" placeholder="رابط الصورة">
+    <button onclick="addProperty()">إضافة</button>
+    <p class="error" id="addPropertyError"></p>
   </div>
 
   <script>
@@ -87,7 +116,7 @@
     const firebaseConfig = {
       apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
       authDomain: "hamsa-6009e.firebaseapp.com",
-      databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com",
+      databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com/",
       projectId: "hamsa-6009e",
       storageBucket: "hamsa-6009e.appspot.com",
       messagingSenderId: "998163671039",
@@ -110,7 +139,7 @@
       const hasLower = /[a-z]/.test(password);
       const hasNumber = /\d/.test(password);
       const hasSymbol = /[^A-Za-z0-9]/.test(password);
-      const hasRepeats = /(.)\1{2,}/.test(password); // 3 أحرف متكررة
+      const hasRepeats = /(.)\1{2,}/.test(password);
       return password.length >= minLength && hasUpper && hasLower && hasNumber && hasSymbol && !hasRepeats;
     }
 
@@ -125,7 +154,7 @@
       }
 
       if (!validatePassword(password)) {
-        errorMsg.textContent = "يجب أن تحتوي كلمة المرور على حرف كبير وصغير، رقم، رمز، وألا تتكرر الأحرف، ويجب أن تكون 8 أحرف على الأقل.";
+        errorMsg.textContent = "كلمة المرور ضعيفة. يجب أن تحتوي على رمز، رقم، حرف كبير وصغير، دون تكرار زائد.";
         return;
       }
 
@@ -181,7 +210,33 @@
         });
     }
 
+    function addProperty() {
+      const type = document.getElementById("type").value;
+      const district = document.getElementById("district").value;
+      const price = document.getElementById("price").value;
+      const desc = document.getElementById("desc").value;
+      const image = document.getElementById("image").value;
+      const code = document.getElementById("code").value;
+
+      if (!type || !district || !price || !code) {
+        document.getElementById("addPropertyError").textContent = "يرجى تعبئة جميع الحقول المطلوبة.";
+        return;
+      }
+
+      const newPost = {
+        type, district, price, desc, image, code,
+        timestamp: Date.now()
+      };
+
+      database.ref("properties").push(newPost).then(() => {
+        alert("تمت الإضافة بنجاح");
+        document.querySelectorAll("#adminPanel input, #adminPanel textarea").forEach(el => el.value = "");
+        document.getElementById("addPropertyError").textContent = "";
+      });
+    }
+
     window.onload = checkPasswordSet;
   </script>
+
 </body>
 </html>
