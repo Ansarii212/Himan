@@ -66,23 +66,6 @@
       margin-top: 10px;
       font-size: 14px;
     }
-
-    .property-item {
-      margin-bottom: 15px;
-      padding: 10px;
-      background-color: #f9f9f9;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-
-    .property-item button {
-      background-color: #ff6347;
-      margin: 5px;
-    }
-
-    .property-item button:hover {
-      background-color: #dc143c;
-    }
   </style>
 </head>
 <body>
@@ -126,15 +109,10 @@
     <input type="text" id="image" placeholder="رابط الصورة">
     <button onclick="addProperty()">إضافة</button>
     <p class="error" id="addPropertyError"></p>
-
-    <hr>
-    <h3>البحث عن العقارات</h3>
-    <input type="text" id="searchInput" placeholder="بحث عن عقار" oninput="searchProperties()">
-    
-    <div id="propertiesList"></div>
   </div>
 
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
       authDomain: "hamsa-6009e.firebaseapp.com",
@@ -205,7 +183,6 @@
             if (enteredHash === storedHash) {
               document.getElementById("loginForm").style.display = "none";
               document.getElementById("adminPanel").style.display = "block";
-              loadProperties();
             } else {
               errorMsg.textContent = "كلمة المرور غير صحيحة.";
             }
@@ -220,132 +197,46 @@
       });
     }
 
-    function loadProperties() {
-      database.ref("properties").once('value', snapshot => {
-        const properties = snapshot.val();
-        const propertiesList = document.getElementById("propertiesList");
-        propertiesList.innerHTML = '';
-        for (let key in properties) {
-          const property = properties[key];
-          const propertyElement = document.createElement('div');
-          propertyElement.classList.add('property-item');
-          propertyElement.innerHTML = `
-            <p><strong>النوع:</strong> ${property.type}</p>
-            <p><strong>الموقع:</strong> ${property.district}</p>
-            <p><strong>السعر:</strong> ${property.price}</p>
-            <p><strong>الوصف:</strong> ${property.desc}</p>
-            <button onclick="deleteProperty('${key}')">حذف</button>
-            <button onclick="editProperty('${key}')">تعديل</button>
-          `;
-          propertiesList.appendChild(propertyElement);
-        }
-      });
-    }
-
-    function searchProperties() {
-      const searchInput = document.getElementById("searchInput").value.toLowerCase();
-      const propertyItems = document.querySelectorAll('.property-item');
-      propertyItems.forEach(item => {
-        const title = item.querySelector('p').textContent.toLowerCase();
-        if (title.includes(searchInput)) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    }
-
-    function deleteProperty(id) {
-      if (confirm("هل أنت متأكد من حذف هذا العقار؟")
-                   database.ref("properties/" + id).remove()
-        .then(() => {
-          alert("تم حذف العقار بنجاح.");
-          loadProperties();
-        })
-        .catch((error) => {
-          alert("حدث خطأ أثناء الحذف: " + error.message);
-        });
-    }
-
-    function editProperty(id) {
-      database.ref("properties/" + id).get()
+    function checkPasswordSet() {
+      database.ref("adminPassword").get()
         .then((snapshot) => {
           if (snapshot.exists()) {
-            const property = snapshot.val();
-            document.getElementById("type").value = property.type;
-            document.getElementById("district").value = property.district;
-            document.getElementById("price").value = property.price;
-            document.getElementById("code").value = property.code;
-            document.getElementById("desc").value = property.desc;
-            document.getElementById("image").value = property.image;
-            const updateButton = document.createElement("button");
-            updateButton.textContent = "تحديث العقار";
-            updateButton.onclick = function() {
-              updateProperty(id);
-            };
-            document.querySelector('.container').appendChild(updateButton);
+            document.getElementById("setPasswordForm").style.display = "none";
+            document.getElementById("loginForm").style.display = "block";
+          } else {
+            document.getElementById("setPasswordForm").style.display = "block";
+            document.getElementById("loginForm").style.display = "none";
           }
-        })
-        .catch((error) => {
-          alert("حدث خطأ أثناء جلب بيانات العقار: " + error.message);
-        });
-    }
-
-    function updateProperty(id) {
-      const updatedProperty = {
-        type: document.getElementById("type").value,
-        district: document.getElementById("district").value,
-        price: document.getElementById("price").value,
-        code: document.getElementById("code").value,
-        desc: document.getElementById("desc").value,
-        image: document.getElementById("image").value
-      };
-
-      database.ref("properties/" + id).update(updatedProperty)
-        .then(() => {
-          alert("تم تحديث العقار بنجاح.");
-          loadProperties();
-        })
-        .catch((error) => {
-          alert("حدث خطأ أثناء التحديث: " + error.message);
         });
     }
 
     function addProperty() {
-      const property = {
-        type: document.getElementById("type").value,
-        district: document.getElementById("district").value,
-        price: document.getElementById("price").value,
-        code: document.getElementById("code").value,
-        desc: document.getElementById("desc").value,
-        image: document.getElementById("image").value
-      };
+      const type = document.getElementById("type").value;
+      const district = document.getElementById("district").value;
+      const price = document.getElementById("price").value;
+      const desc = document.getElementById("desc").value;
+      const image = document.getElementById("image").value;
+      const code = document.getElementById("code").value;
 
-      const errorMsg = document.getElementById("addPropertyError");
-
-      if (!property.type || !property.district || !property.price || !property.code || !property.desc || !property.image) {
-        errorMsg.textContent = "جميع الحقول مطلوبة.";
+      if (!type || !district || !price || !code) {
+        document.getElementById("addPropertyError").textContent = "يرجى تعبئة جميع الحقول المطلوبة.";
         return;
       }
 
-      const newPropertyRef = database.ref("properties").push();
-      newPropertyRef.set(property)
-        .then(() => {
-          alert("تم إضافة العقار بنجاح.");
-          document.getElementById("type").value = '';
-          document.getElementById("district").value = '';
-          document.getElementById("price").value = '';
-          document.getElementById("code").value = '';
-          document.getElementById("desc").value = '';
-          document.getElementById("image").value = '';
-          loadProperties();
-        })
-        .catch((error) => {
-          errorMsg.textContent = "حدث خطأ أثناء إضافة العقار: " + error.message;
-        });
+      const newPost = {
+        type, district, price, desc, image, code,
+        timestamp: Date.now()
+      };
+
+      database.ref("properties").push(newPost).then(() => {
+        alert("تمت الإضافة بنجاح");
+        document.querySelectorAll("#adminPanel input, #adminPanel textarea").forEach(el => el.value = "");
+        document.getElementById("addPropertyError").textContent = "";
+      });
     }
 
+    window.onload = checkPasswordSet;
   </script>
 
 </body>
-</html>     
+</html>
