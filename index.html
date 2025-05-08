@@ -256,54 +256,96 @@
     }
 
     function deleteProperty(id) {
-      if (confirm("هل أنت متأكد من حذف هذا العقار؟")) {
-        database.ref("properties/" + id).remove()
-          .then(() => loadProperties())
-          .catch(() => alert("حدث خطأ أثناء الحذف."));
-      }
-    }
-
-    function editProperty(id) {
-      const propertyRef = database.ref("properties/" + id);
-      propertyRef.get().then(snapshot => {
-        const property = snapshot.val();
-        document.getElementById("type").value = property.type;
-        document.getElementById("district").value = property.district;
-        document.getElementById("price").value = property.price;
-        document.getElementById("code").value = property.code;
-        document.getElementById("desc").value = property.desc;
-        document.getElementById("image").value = property.image;
-        
-        document.querySelector("button").textContent = "تحديث";
-        document.querySelector("button").onclick = function() {
-          updateProperty(id);
-        };
-      });
-    }
-
-    function updateProperty(id) {
-      const type = document.getElementById("type").value;
-      const district = document.getElementById("district").value;
-      const price = document.getElementById("price").value;
-      const desc = document.getElementById("desc").value;
-      const image = document.getElementById("image").value;
-      const code = document.getElementById("code").value;
-
-      const updatedPost = { type, district, price, desc, image, code, timestamp: Date.now() };
-
-      database.ref("properties/" + id).set(updatedPost)
+      if (confirm("هل أنت متأكد من حذف هذا العقار؟")
+                   database.ref("properties/" + id).remove()
         .then(() => {
-          alert("تم التحديث بنجاح");
+          alert("تم حذف العقار بنجاح.");
           loadProperties();
-        }).catch(() => {
-          alert("حدث خطأ أثناء التحديث.");
+        })
+        .catch((error) => {
+          alert("حدث خطأ أثناء الحذف: " + error.message);
         });
     }
 
-    window.onload = function() {
-      checkPasswordSet();
-    };
+    function editProperty(id) {
+      database.ref("properties/" + id).get()
+        .then((snapshot) => {
+          if (snapshot.exists()) {
+            const property = snapshot.val();
+            document.getElementById("type").value = property.type;
+            document.getElementById("district").value = property.district;
+            document.getElementById("price").value = property.price;
+            document.getElementById("code").value = property.code;
+            document.getElementById("desc").value = property.desc;
+            document.getElementById("image").value = property.image;
+            const updateButton = document.createElement("button");
+            updateButton.textContent = "تحديث العقار";
+            updateButton.onclick = function() {
+              updateProperty(id);
+            };
+            document.querySelector('.container').appendChild(updateButton);
+          }
+        })
+        .catch((error) => {
+          alert("حدث خطأ أثناء جلب بيانات العقار: " + error.message);
+        });
+    }
+
+    function updateProperty(id) {
+      const updatedProperty = {
+        type: document.getElementById("type").value,
+        district: document.getElementById("district").value,
+        price: document.getElementById("price").value,
+        code: document.getElementById("code").value,
+        desc: document.getElementById("desc").value,
+        image: document.getElementById("image").value
+      };
+
+      database.ref("properties/" + id).update(updatedProperty)
+        .then(() => {
+          alert("تم تحديث العقار بنجاح.");
+          loadProperties();
+        })
+        .catch((error) => {
+          alert("حدث خطأ أثناء التحديث: " + error.message);
+        });
+    }
+
+    function addProperty() {
+      const property = {
+        type: document.getElementById("type").value,
+        district: document.getElementById("district").value,
+        price: document.getElementById("price").value,
+        code: document.getElementById("code").value,
+        desc: document.getElementById("desc").value,
+        image: document.getElementById("image").value
+      };
+
+      const errorMsg = document.getElementById("addPropertyError");
+
+      if (!property.type || !property.district || !property.price || !property.code || !property.desc || !property.image) {
+        errorMsg.textContent = "جميع الحقول مطلوبة.";
+        return;
+      }
+
+      const newPropertyRef = database.ref("properties").push();
+      newPropertyRef.set(property)
+        .then(() => {
+          alert("تم إضافة العقار بنجاح.");
+          document.getElementById("type").value = '';
+          document.getElementById("district").value = '';
+          document.getElementById("price").value = '';
+          document.getElementById("code").value = '';
+          document.getElementById("desc").value = '';
+          document.getElementById("image").value = '';
+          loadProperties();
+        })
+        .catch((error) => {
+          errorMsg.textContent = "حدث خطأ أثناء إضافة العقار: " + error.message;
+        });
+    }
+
   </script>
 
 </body>
-</html>
+</html>     
