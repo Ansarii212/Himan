@@ -88,8 +88,10 @@
     <button onclick="login()">دخول</button>
     <p class="error" id="loginErrorMessage"></p>
   </div>
-
   <div class="container" id="adminPanel" style="display:none;">
+  
+    <button onclick="location.href='https://ansarii212.github.io/Master/'">الصفحة الرئيسية</button>
+
     <h3>إضافة عقار جديد</h3>
     <select id="type">
       <option>شقة</option>
@@ -188,9 +190,7 @@
     <button onclick="addProperty()">إضافة</button>
     <p class="error" id="addPropertyError"></p>
   </div>
-<div class="top-nav">
-    <button onclick="location.href='https://ansarii212.github.io/Master/'">الصفحة الرئيسية</button>
-</div>
+
   <script>
     // Firebase config
     const firebaseConfig = {
