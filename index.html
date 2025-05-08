@@ -1,204 +1,254 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>لوحة تحكم وعرض العقارات</title>
+  <title>لوحة تحكم العقارات</title>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
   <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background-color: #f4f4f4;
-      margin: 0;
-      padding: 20px;
-      direction: rtl;
-    }
-    h2 {
-      color: #333;
-    }
-    section {
-      background: #fff;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    input, select, textarea, button {
-      display: block;
-      width: 100%;
-      margin: 10px 0;
-      padding: 8px;
-      font-size: 16px;
-    }
-    .property {
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 8px;
-      background-color: #fafafa;
-    }
-    .hidden {
-      display: none;
-    }
+    body { font-family: Arial, sans-serif; }
+    #loginForm, #adminPanel { display: none; }
+    .property-card { border: 1px solid #ccc; margin: 10px; padding: 10px; border-radius: 5px; }
+    .property-card button { margin: 5px; }
+    #setPasswordForm { display: block; }
+    .error { color: red; }
   </style>
 </head>
 <body>
 
-<!-- تسجيل دخول المشرف -->
-<section id="adminLogin">
-  <h2>تسجيل دخول المشرف</h2>
-  <input type="password" id="adminPassword" placeholder="أدخل كلمة المرور">
-  <button onclick="checkPassword()">دخول</button>
-</section>
+  <!-- صفحة تعيين كلمة المرور -->
+  <div id="setPasswordForm">
+    <h2>تعيين كلمة مرور المشرف</h2>
+    <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور" required><br>
+    <input type="password" id="confirmPasswordInput" placeholder="تأكيد كلمة المرور" required><br>
+    <button onclick="setPassword()">تعيين كلمة المرور</button>
+    <p class="error" id="setPasswordError"></p>
+  </div>
 
-<!-- لوحة إضافة العقارات -->
-<section id="adminPanel" class="hidden">
-  <h2>إضافة عقار جديد</h2>
-  <input type="text" id="propertyName" placeholder="اسم العقار">
-  <input type="text" id="propertyLocation" placeholder="الموقع">
-  <input type="number" id="propertyPrice" placeholder="السعر">
-  <select id="propertyType">
-    <option value="شقة">شقة</option>
-    <option value="فيلا">فيلا</option>
-    <option value="أرض">أرض</option>
-  </select>
-  <textarea id="propertyDescription" placeholder="الوصف"></textarea>
-  <button onclick="addProperty()">إضافة</button>
-</section>
+  <!-- صفحة تسجيل الدخول -->
+  <div id="loginForm">
+    <h2>تسجيل الدخول</h2>
+    <input type="password" id="loginPasswordInput" placeholder="أدخل كلمة المرور" required><br>
+    <button onclick="login()">تسجيل الدخول</button>
+    <p class="error" id="loginErrorMessage"></p>
+  </div>
 
-<!-- واجهة الزوار لعرض العقارات -->
-<section>
-  <h2>العقارات المتاحة</h2>
-  <label for="filterLocation">تصفية حسب الموقع:</label>
-  <select id="filterLocation" onchange="filterProperties()">
-    <option value="">الكل</option>
-    <option value="المروة">المروة</option>
-    <option value="الفيصلية">الفيصلية</option>
-    <option value="الربوة">الربوة</option>
-    <option value="النهضة">النهضة</option>
-  </select>
-  <div id="propertyList"></div>
-</section>
+  <!-- لوحة تحكم المشرف -->
+  <div id="adminPanel">
+    <h2>لوحة تحكم العقارات</h2>
+    <h3>إضافة عقار جديد</h3>
+    <input type="text" id="type" placeholder="نوع العقار" required><br>
+    <input type="text" id="district" placeholder="الحي" required><br>
+    <input type="number" id="price" placeholder="السعر" required><br>
+    <input type="text" id="code" placeholder="كود العقار" required><br>
+    <textarea id="desc" placeholder="وصف العقار" required></textarea><br>
+    <input type="text" id="image" placeholder="رابط الصورة" required><br>
+    <button onclick="addProperty()">إضافة عقار</button>
+    <p class="error" id="addPropertyError"></p>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <h3>عرض العقارات</h3>
+    <select id="cityFilter">
+      <option value="">اختر المدينة</option>
+      <option value="مدينة 1">مدينة 1</option>
+      <option value="مدينة 2">مدينة 2</option>
+    </select>
+    <select id="sortFilter">
+      <option value="latest">ترتيب حسب الأحدث</option>
+      <option value="priceHigh">ترتيب حسب السعر (أعلى إلى أدنى)</option>
+      <option value="priceLow">ترتيب حسب السعر (أدنى إلى أعلى)</option>
+      <option value="oldest">ترتيب حسب الأقدم</option>
+    </select>
+    <div id="propertyList"></div>
+  </div>
 
-<script>
-  // إعداد Firebase
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database().ref('properties');
-
-  // كلمة المرور للمشرف
-  const ADMIN_PASSWORD = "1234";
-
-  function checkPassword() {
-    const password = document.getElementById('adminPassword').value;
-    if (password === ADMIN_PASSWORD) {
-      document.getElementById('adminLogin').classList.add('hidden');
-      document.getElementById('adminPanel').classList.remove('hidden');
-    } else {
-      alert("كلمة المرور غير صحيحة");
-    }
-  }
-
-  // إضافة عقار جديد
-  function addProperty() {
-    const name = document.getElementById('propertyName').value;
-    const location = document.getElementById('propertyLocation').value;
-    const price = document.getElementById('propertyPrice').value;
-    const type = document.getElementById('propertyType').value;
-    const description = document.getElementById('propertyDescription').value;
-
-    if (!name || !location || !price) {
-      alert("يرجى تعبئة كل الحقول");
-      return;
-    }
-
-    const newProperty = {
-      name,
-      location,
-      price,
-      type,
-      description,
-      timestamp: new Date().toISOString()
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-    db.push(newProperty).then(() => {
-      alert("تمت الإضافة بنجاح");
-      clearForm();
-      loadProperties();
-    });
-  }
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    }
 
-  function clearForm() {
-    document.getElementById('propertyName').value = "";
-    document.getElementById('propertyLocation').value = "";
-    document.getElementById('propertyPrice').value = "";
-    document.getElementById('propertyDescription').value = "";
-  }
+    function setPassword() {
+      const password = document.getElementById("passwordInput").value;
+      const confirmPassword = document.getElementById("confirmPasswordInput").value;
 
-  // تحميل العقارات من Firebase
-  function loadProperties() {
-    db.once('value', snapshot => {
-      const data = snapshot.val();
-      const list = document.getElementById('propertyList');
-      list.innerHTML = '';
-      if (data) {
-        Object.keys(data).reverse().forEach(key => {
-          const prop = data[key];
-          const div = document.createElement('div');
-          div.className = 'property';
-          div.innerHTML = `
-            <strong>الاسم:</strong> ${prop.name}<br>
-            <strong>الموقع:</strong> ${prop.location}<br>
-            <strong>السعر:</strong> ${prop.price}<br>
-            <strong>النوع:</strong> ${prop.type}<br>
-            <strong>الوصف:</strong> ${prop.description || '---'}
-          `;
-          list.appendChild(div);
+      if (password === confirmPassword) {
+        hashPassword(password).then(hash => {
+          // Save the hashed password in Firebase database
+          database.ref("adminPassword").set(hash).then(() => {
+            document.getElementById("setPasswordForm").style.display = "none";
+            document.getElementById("loginForm").style.display = "block";
+          }).catch(error => {
+            document.getElementById("setPasswordError").textContent = "حدث خطأ أثناء حفظ كلمة المرور.";
+          });
         });
+      } else {
+        document.getElementById("setPasswordError").textContent = "كلمات المرور غير متطابقة.";
       }
-    });
-  }
+    }
 
-  // فلترة العقارات حسب الموقع
-  function filterProperties() {
-    const filter = document.getElementById('filterLocation').value;
-    db.once('value', snapshot => {
-      const data = snapshot.val();
-      const list = document.getElementById('propertyList');
-      list.innerHTML = '';
-      if (data) {
-        Object.keys(data).reverse().forEach(key => {
-          const prop = data[key];
-          if (!filter || prop.location === filter) {
-            const div = document.createElement('div');
-            div.className = 'property';
-            div.innerHTML = `
-              <strong>الاسم:</strong> ${prop.name}<br>
-              <strong>الموقع:</strong> ${prop.location}<br>
-              <strong>السعر:</strong> ${prop.price}<br>
-              <strong>النوع:</strong> ${prop.type}<br>
-              <strong>الوصف:</strong> ${prop.description || '---'}
-            `;
-            list.appendChild(div);
+    function login() {
+      const password = document.getElementById("loginPasswordInput").value;
+      database.ref("adminPassword").once("value").then(snapshot => {
+        const savedPasswordHash = snapshot.val();
+        hashPassword(password).then(hash => {
+          if (savedPasswordHash === hash) {
+            document.getElementById("loginForm").style.display = "none";
+            document.getElementById("adminPanel").style.display = "block";
+            getProperties(); // Load properties after login
+          } else {
+            document.getElementById("loginErrorMessage").textContent = "كلمة المرور غير صحيحة.";
           }
         });
-      }
-    });
-  }
+      });
+    }
 
-  // تحميل البيانات عند الفتح
-  window.onload = loadProperties;
-</script>
+    function addProperty() {
+      const type = document.getElementById("type").value;
+      const district = document.getElementById("district").value;
+      const price = document.getElementById("price").value;
+      const code = document.getElementById("code").value;
+      const desc = document.getElementById("desc").value;
+      const image = document.getElementById("image").value;
+
+      if (type && district && price && code && desc && image) {
+        const property = {
+          type,
+          district,
+          price,
+          code,
+          desc,
+          image,
+          timestamp: Date.now()
+        };
+
+        database.ref("properties").push(property).then(() => {
+          alert("تم إضافة العقار بنجاح.");
+          clearAddPropertyForm();
+          getProperties(); // Refresh the property list
+        }).catch(error => {
+          document.getElementById("addPropertyError").textContent = "حدث خطأ أثناء إضافة العقار.";
+        });
+      } else {
+        document.getElementById("addPropertyError").textContent = "يرجى تعبئة جميع الحقول.";
+      }
+    }
+
+    function clearAddPropertyForm() {
+      document.getElementById("type").value = "";
+      document.getElementById("district").value = "";
+      document.getElementById("price").value = "";
+      document.getElementById("code").value = "";
+      document.getElementById("desc").value = "";
+      document.getElementById("image").value = "";
+    }
+
+    function renderProperties(properties) {
+      const propertyList = document.getElementById("propertyList");
+      propertyList.innerHTML = '';
+
+      properties.forEach(property => {
+        const propertyCard = document.createElement('div');
+        propertyCard.className = 'property-card';
+        propertyCard.innerHTML = `
+          <div>
+            <strong>${property.type}</strong> - ${property.district} <br>
+            السعر: ${property.price} <br>
+            <p>${property.desc}</p>
+          </div>
+          <div>
+            <button onclick="editProperty('${property.code}')">تعديل</button>
+            <button onclick="saveChanges('${property.code}')">حفظ التغييرات</button>
+            <button onclick="deleteProperty('${property.code}')">حذف</button>
+            <button onclick="shareProperty('${property.code}')">مشاركة</button>
+          </div>
+        `;
+        propertyList.appendChild(propertyCard);
+      });
+    }
+
+    function getProperties() {
+      database.ref("properties").once('value').then(snapshot => {
+        const properties = [];
+        snapshot.forEach(childSnapshot => {
+          properties.push(childSnapshot.val());
+        });
+
+        // Apply filters
+        const city = document.getElementById('cityFilter').value;
+        const sortBy = document.getElementById('sortFilter').value;
+
+        // Filter by city
+        let filteredProperties = properties.filter(property => {
+          if (city && property.district !== city) {
+            return false;
+          }
+          return true;
+        });
+
+        // Sort properties
+        if (sortBy === 'latest') {
+          filteredProperties.sort((a, b) => b.timestamp - a.timestamp);
+        } else if (sortBy === 'priceHigh') {
+          filteredProperties.sort((a, b) => b.price - a.price);
+        } else if (sortBy === 'priceLow') {
+          filteredProperties.sort((a, b) => a.price - b.price);
+        } else if (sortBy === 'oldest') {
+          filteredProperties.sort((a, b) => a.timestamp - b.timestamp);
+        }
+
+        renderProperties(filteredProperties);
+      });
+    }
+
+    function editProperty(code) {
+      alert(`تعديل العقار برقم الكود: ${code}`);
+    }
+
+    function saveChanges(code) {
+      alert(`حفظ التغييرات للعقار برقم الكود: ${code}`);
+    }
+
+    function deleteProperty(code) {
+      if (confirm('هل أنت متأكد من أنك تريد حذف هذا العقار؟')) {
+        database.ref("properties").orderByChild('code').equalTo(code).once('value', snapshot => {
+          snapshot.forEach(childSnapshot => {
+            childSnapshot.ref.remove();
+          });
+        });
+        alert("تم حذف العقار بنجاح.");
+        getProperties();
+      }
+    }
+
+    function shareProperty(code) {
+      alert(`مشاركة العقار برقم الكود: ${code}`);
+    }
+
+    window.onload = function() {
+      getProperties();
+
+      document.getElementById('cityFilter').addEventListener('change', getProperties);
+      document.getElementById('sortFilter').addEventListener('change', getProperties);
+    }
+  </script>
+
 </body>
 </html>
