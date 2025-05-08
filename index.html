@@ -1,215 +1,263 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>لوحة تحكم العقارات</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background-color: #f7f3e9;
-      color: #333;
-      padding: 20px;
-      direction: rtl;
+‏<!DOCTYPE html>
+‏<html lang="ar">
+‏<head>
+‏  <meta charset="UTF-8" />
+‏  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+‏  <title>عقارات جدة</title>
+‏  <style>
+‏    body {
+‏      font-family: 'Arial', sans-serif;
+‏      background: #f9f4ef;
+‏      margin: 0;
+‏      padding: 0;
+‏      direction: rtl;
     }
-
-    h2, h3 {
-      color: #8B4513;
+‏    header {
+‏      background: #7b4f2c;
+‏      color: white;
+‏      padding: 1rem;
+‏      text-align: center;
+‏      position: relative;
     }
-
-    label {
-      display: block;
-      margin-top: 10px;
-      font-weight: bold;
+‏    .logout-btn {
+‏      position: absolute;
+‏      left: 1rem;
+‏      top: 1rem;
+‏      background: white;
+‏      color: #7b4f2c;
+‏      border: none;
+‏      padding: 0.5rem 1rem;
+‏      cursor: pointer;
+‏      border-radius: 4px;
     }
-
-    input, textarea {
-      width: 95%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-family: inherit;
+‏    .container {
+‏      max-width: 800px;
+‏      margin: auto;
+‏      padding: 1rem;
     }
-
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      background-color: #8B4513;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
+‏    input, select {
+‏      width: 100%;
+‏      padding: 0.7rem;
+‏      margin-bottom: 1rem;
+‏      border: 1px solid #ccc;
+‏      border-radius: 8px;
+‏      background: #fff9f3;
+‏      color: #333;
     }
-
-    .property {
-      border: 2px solid #d2b48c;
-      padding: 15px;
-      margin-top: 15px;
-      background-color: #fff;
-      border-radius: 10px;
+‏    button {
+‏      padding: 0.7rem 1.5rem;
+‏      background: #7b4f2c;
+‏      color: white;
+‏      border: none;
+‏      cursor: pointer;
+‏      border-radius: 8px;
     }
-
-    .property img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 10px;
-      margin-top: 10px;
+‏    .login-box {
+‏      background: white;
+‏      padding: 2rem;
+‏      margin-top: 2rem;
+‏      text-align: center;
+‏      border-radius: 8px;
     }
-
-    .share-btn {
-      margin-top: 10px;
-      padding: 8px 15px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      margin-right: 5px;
+‏    .property {
+‏      background: white;
+‏      padding: 1rem;
+‏      margin-bottom: 1rem;
+‏      border-left: 5px solid #7b4f2c;
+‏      border-radius: 8px;
     }
-
-    .share-btn.red {
-      background-color: red;
+‏    .property img {
+‏      width: 100%;
+‏      max-height: 200px;
+‏      object-fit: contain;
+‏      background: #f2e9e4;
+‏      border-radius: 6px;
+‏      margin-bottom: 1rem;
     }
-
-    #loginForm {
-      max-width: 400px;
-      margin: auto;
+‏    .share-btn {
+‏      background: #7b4f2c;
+‏      color: white;
+‏      border: none;
+‏      padding: 0.4rem 0.8rem;
+‏      border-radius: 6px;
+‏      margin-top: 0.5rem;
+‏      float: left;
     }
-
-    #adminPanel {
-      display: none;
-      max-width: 700px;
-      margin: auto;
+‏    .filter-bar {
+‏      display: flex;
+‏      flex-wrap: wrap;
+‏      gap: 0.5rem;
+‏      margin-bottom: 1.5rem;
     }
-
-    #propertyList {
-      margin-top: 20px;
+‏    .filter-bar select {
+‏      flex: 1;
     }
-  </style>
-</head>
-<body>
-  <div id="loginForm">
-    <h2>تسجيل الدخول للمشرف</h2>
-    <label>كلمة المرور:</label>
-    <input type="password" id="adminPass">
-    <button onclick="checkPassword()">دخول</button>
-    <p id="loginError" style="color:red;"></p>
-  </div>
+‏  </style>
+‏</head>
+‏<body>
 
-  <div id="adminPanel">
-    <h2>لوحة تحكم المشرف</h2>
-    <label>نوع العقار:</label>
-    <input id="type">
-    <label>الحي:</label>
-    <input id="district">
-    <label>السعر:</label>
-    <input id="price">
-    <label>الكود:</label>
-    <input id="code">
-    <label>رابط الصورة:</label>
-    <input id="image">
-    <label>الوصف:</label>
-    <textarea id="desc"></textarea>
-    <button onclick="addProperty()">إضافة عقار</button>
-    <p id="addPropertyError" style="color:red;"></p>
+‏<header>
+‏  <h1>عقارات جدة</h1>
+‏  <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
+‏</header>
 
-    <h3>العقارات المضافة</h3>
-    <div id="propertyList"></div>
-  </div>
+‏<div class="container">
+‏  <div id="loginBox" class="login-box">
+‏    <h2>تسجيل الدخول برقم الجوال</h2>
+‏    <input type="text" id="phone" placeholder="مثال: 0555555555">
+‏    <button onclick="login()">تسجيل الدخول</button>
+‏    <p id="loginNote" style="color: red;"></p>
+‏    <div id="registerBox" style="display:none;">
+‏      <input type="text" id="newUserPhone" placeholder="أدخل رقمك للتسجيل">
+‏      <button onclick="register()">تسجيل</button>
+‏    </div>
+‏  </div>
 
-  <script>
-    const firebaseConfig = {
-      databaseURL: "https://arab-properties-default-rtdb.firebaseio.com/"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+‏  <div id="filters" class="filter-bar" style="display:none;">
+‏    <select onchange="filterProperties()" id="sortFilter">
+‏      <option value="new">الأحدث</option>
+‏      <option value="old">الأقدم</option>
+‏      <option value="high">الأغلى</option>
+‏      <option value="low">الأرخص</option>
+‏    </select>
+‏    <select onchange="filterProperties()" id="districtFilter">
+‏      <option value="">كل الأحياء</option>
+‏      <option>الصفا</option>
+‏      <option>السلامة</option>
+‏      <option>الفيصلية</option>
+‏      <option>الروضة</option>
+‏      <option>النزهة</option>
+‏      <option>الحمراء</option>
+‏      <option>المروة</option>
+‏      <option>البوادي</option>
+‏      <option>بني مالك</option>
+‏      <option>العزيزية</option>
+‏      <option>الرحاب</option>
+‏      <option>الشاطئ</option>
+‏      <option>النهضة</option>
+‏      <option>الجامعة</option>
+‏    </select>
+‏  </div>
 
-    const storedHash = "RZBMF"; // كلمة المرور المشفرة
+‏  <div id="listings"></div>
+‏</div>
 
-    function checkPassword() {
-      const enteredHash = document.getElementById("adminPass").value;
-      if (enteredHash === storedHash) {
-        document.getElementById("loginForm").style.display = "none";
-        document.getElementById("adminPanel").style.display = "block";
-        loadProperties();
-      } else {
-        document.getElementById("loginError").textContent = "كلمة المرور غير صحيحة.";
+‏<!-- Firebase -->
+‏<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+‏<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+‏<script>
+‏  const firebaseConfig = {
+‏    apiKey: "AIzaSyCr4T8GLRxtf_6LNrokjKvmBOwSkuGO5yQ",
+‏    authDomain: "hamsa-6009e.firebaseapp.com",
+‏    databaseURL: "https://hamsa-6009e-default-rtdb.firebaseio.com/",
+‏    projectId: "hamsa-6009e",
+‏    storageBucket: "hamsa-6009e.appspot.com",
+‏    messagingSenderId: "998163671039",
+‏    appId: "1:998163671039:web:d1930ea5b71a3a3fc729ca"
+  };
+
+‏  firebase.initializeApp(firebaseConfig);
+‏  const db = firebase.database();
+
+‏  let currentUser = localStorage.getItem("currentUser") || "";
+‏  let properties = [];
+
+‏  function login() {
+‏    const phone = document.getElementById("phone").value.trim();
+‏    if (!phone) return;
+‏    document.getElementById("loginBox").style.display = "none";
+‏    db.ref("users").once("value", snapshot => {
+‏      const users = snapshot.val() || {};
+‏      if (users[phone]) {
+‏        currentUser = phone;
+‏        localStorage.setItem("currentUser", phone);
+‏        document.getElementById("filters").style.display = "flex";
+‏        displayProperties();
+‏      } else {
+‏        document.getElementById("loginNote").innerText = "ليس لديك حساب. رجاء التسجيل لتتمكن من الدخول";
+‏        document.getElementById("registerBox").style.display = "block";
+‏        document.getElementById("loginBox").style.display = "block";
       }
-    }
+    });
+  }
 
-    function addProperty() {
-      const type = document.getElementById("type").value.trim();
-      const district = document.getElementById("district").value.trim();
-      const price = document.getElementById("price").value.trim();
-      const code = document.getElementById("code").value.trim();
-      const image = document.getElementById("image").value.trim();
-      const desc = document.getElementById("desc").value.trim();
+‏  function register() {
+‏    const phone = document.getElementById("newUserPhone").value.trim();
+‏    if (!phone) return;
+‏    db.ref("users/" + phone).set({ registered: true }, () => {
+‏      alert("تم التسجيل بنجاح");
+‏      location.reload();
+    });
+  }
 
-      if (!type || !district || !price || !code) {
-        document.getElementById("addPropertyError").textContent = "يرجى تعبئة الحقول الإلزامية.";
-        return;
-      }
-
-      const newPost = { type, district, price, code, image, desc };
-
-      database.ref("properties").push(newPost).then(() => {
-        alert("تمت الإضافة بنجاح");
-        document.querySelectorAll("#adminPanel input, #adminPanel textarea").forEach(el => el.value = "");
-        document.getElementById("addPropertyError").textContent = "";
-        loadProperties();
+‏  function displayProperties() {
+‏    db.ref("properties").once("value", snapshot => {
+‏      properties = [];
+‏      snapshot.forEach(child => {
+‏        properties.push(child.val());
       });
+‏      renderProperties();
+    });
+  }
+
+‏  function renderProperties() {
+‏    const sort = document.getElementById("sortFilter").value;
+‏    const district = document.getElementById("districtFilter").value;
+‏    let filtered = [...properties];
+
+‏    if (district) {
+‏      filtered = filtered.filter(p => p.district === district);
     }
 
-    function loadProperties() {
-      const propertyList = document.getElementById("propertyList");
-      propertyList.innerHTML = "";
+‏    if (sort === "new") filtered.sort((a, b) => b.timestamp - a.timestamp);
+‏    if (sort === "old") filtered.sort((a, b) => a.timestamp - b.timestamp);
+‏    if (sort === "high") filtered.sort((a, b) => b.price - a.price);
+‏    if (sort === "low") filtered.sort((a, b) => a.price - b.price);
 
-      database.ref("properties").once("value", (snapshot) => {
-        snapshot.forEach((childSnapshot) => {
-          const data = childSnapshot.val();
-          const key = childSnapshot.key;
+‏    const listings = document.getElementById("listings");
+‏    listings.innerHTML = "";
+‏    filtered.forEach(prop => {
+‏      const div = document.createElement("div");
+‏      div.className = "property";
+‏      div.innerHTML = `
+‏        <img src="${prop.image}" alt="صورة العقار">
+‏        <h4>${prop.type}</h4>
+‏        <p><strong>الحي:</strong> ${prop.district}</p>
+‏        <p><strong>السعر:</strong> ${prop.price}</p>
+‏        <p><strong>الوصف:</strong> ${prop.desc}</p>
+‏        <p><strong>الكود:</strong> ${prop.code} 
+‏          <button class="share-btn" onclick="share('${prop.code}', '${prop.desc}')">مشاركة</button>
+‏        </p>
+      `;
+‏      listings.appendChild(div);
+    });
+  }
 
-          const div = document.createElement("div");
-          div.className = "property";
-          div.innerHTML = `
-            <img src="${data.image || ''}" alt="صورة العقار">
-            <p><strong>النوع:</strong> ${data.type}</p>
-            <p><strong>الحي:</strong> ${data.district}</p>
-            <p><strong>السعر:</strong> ${data.price}</p>
-            <p><strong>الكود:</strong> ${data.code}</p>
-            <p><strong>الوصف:</strong> ${data.desc}</p>
-            <button class="share-btn" onclick="shareProperty('${data.code}')">مشاركة</button>
-            <button class="share-btn red" onclick="deleteProperty('${key}')">حذف</button>
-          `;
-          propertyList.appendChild(div);
-        });
-      });
+‏  function share(code, desc) {
+‏    const text = `إعلان رقم ${code}: ${desc}\nرابط الصفحة: ${window.location.href}`;
+‏    navigator.share ? navigator.share({ text }) : alert("انسخ الرابط: " + text);
+  }
+
+‏  function logout() {
+‏    if (confirm("هل تريد تسجيل الخروج؟")) {
+‏      localStorage.removeItem("currentUser");
+‏      location.reload();
     }
+  }
 
-    function shareProperty(code) {
-      const text = `شاهد هذا العقار بكود: ${code}`;
-      if (navigator.share) {
-        navigator.share({ title: 'عقار', text })
-          .catch((err) => console.log('مشاركة فشلت:', err));
-      } else {
-        alert("المتصفح لا يدعم المشاركة. الكود: " + code);
-      }
-    }
+‏  function filterProperties() {
+‏    renderProperties();
+  }
 
-    function deleteProperty(key) {
-      if (confirm("هل أنت متأكد من حذف هذا العقار؟")) {
-        database.ref("properties/" + key).remove()
-          .then(() => {
-            alert("تم حذف العقار.");
-            loadProperties();
-          })
-          .catch(() => alert("فشل الحذف."));
-      }
+‏  window.onload = () => {
+‏    if (currentUser) {
+‏      document.getElementById("loginBox").style.display = "none";
+‏      document.getElementById("filters").style.display = "flex";
+‏      displayProperties();
     }
-  </script>
-</body>
-</html>
+  }
+‏</script>
+
+‏</body>
+‏</html>
